@@ -15,7 +15,7 @@ spec:
     spec:
       serviceAccountName: backend
       containers:
-        - image: fl64/hl-backend:latest
+        - image: fl64/hl2022-backend:latest
           imagePullPolicy: Always
           name: backend
           ports:
@@ -30,5 +30,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: CLUSTER_NAME
-              value: TEST
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName

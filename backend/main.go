@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/ilyakaznacheev/cleanenv"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"net/http"
@@ -19,21 +21,23 @@ import (
 var BuildDatetime = "none"
 var BuildVer = "devel"
 
-type App struct {
-	addr        string
-	podName     string
-	podNS       string
-	clusterName string
-	srv         *http.Server
-	disaster    atomic.Bool
+type Cfg struct {
+	SrvAddr    string        `env:"SERVER_ADDR" env-default:":8000"`
+	PodName    string        `env:"POD_NAME"`
+	PodNS      string        `env:"POD_NAMESPACE"`
+	NodeName   string        `env:"NODE_NAME"`
+	SleepDelay time.Duration `env:"SLEEP_DELAY" env-default:"1s"`
 }
 
-func NewApp(addr, name, ns, cluster string) *App {
+type App struct {
+	cfg      Cfg
+	srv      *http.Server
+	disaster atomic.Bool
+}
+
+func NewApp(cfg Cfg) *App {
 	return &App{
-		addr:        addr,
-		podName:     name,
-		podNS:       ns,
-		clusterName: cluster,
+		cfg: cfg,
 	}
 }
 
@@ -42,13 +46,12 @@ func (a *App) Handler(w http.ResponseWriter, r *http.Request) {
 	log.Infof("Disaster annotation exists: %v", disaster)
 	if disaster {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "CLUSTER_NAME: %s — I feel bad...\n", a.clusterName)
+		fmt.Fprintf(w, "NODE_NAME: %s — I feel bad...\n", a.cfg.NodeName)
 
 	} else {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "CLUSTER_NAME: %s, POD_NAME: %s\n", a.clusterName, a.podName)
+		fmt.Fprintf(w, "NODE_NAME: %s, POD_NAME: %s\n", a.cfg.NodeName, a.cfg.PodName)
 	}
-
 }
 
 func (a *App) Run(ctx context.Context) error {
@@ -75,7 +78,7 @@ func (a *App) Run(ctx context.Context) error {
 		go func() {
 			log.Infof("Run annotation checker")
 			for {
-				pod, err := clientset.CoreV1().Pods(a.podNS).Get(context.TODO(), a.podName, metav1.GetOptions{})
+				pod, err := clientset.CoreV1().Pods(a.cfg.PodNS).Get(context.TODO(), a.cfg.PodName, metav1.GetOptions{})
 				if err != nil {
 					log.Errorf("Can't get pod: %v", err)
 				}
@@ -96,11 +99,14 @@ func (a *App) Run(ctx context.Context) error {
 	r.HandleFunc("/", a.Handler)
 
 	a.srv = &http.Server{
-		Addr:    a.addr,
+		Addr:    a.cfg.SrvAddr,
 		Handler: r,
 	}
 
-	log.Infof("Starting http on %s", a.addr)
+	j, _ := json.Marshal(a.cfg)
+	log.Infof("Current config %s", string(j))
+
+	log.Infof("Starting http on %s", a.cfg.SrvAddr)
 	err = a.srv.ListenAndServe()
 
 	if err != nil && err != http.ErrServerClosed {
@@ -119,7 +125,12 @@ func main() {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	a := NewApp(":8000", os.Getenv("POD_NAME"), os.Getenv("POD_NAMESPACE"), os.Getenv("CLUSTER_NAME"))
+	var cfg Cfg
+	err := cleanenv.ReadEnv(&cfg)
+	if err != nil {
+		log.Fatalf("Can't load env")
+	}
+	a := NewApp(cfg)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(
@@ -137,7 +148,7 @@ func main() {
 		cancel()
 	}()
 
-	err := a.Run(ctx)
+	err = a.Run(ctx)
 	if err != nil {
 		log.Fatalf("Can't run app: %v \n", err)
 	}

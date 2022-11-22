@@ -1,33 +1,57 @@
 REGISTRY_REPO=fl64
 
-CONTAINER_NAME=hl-backend
 CONTAINER_VER:=$(shell git describe --tags)
 CONTAINER_VER := $(if $(CONTAINER_VER),$(CONTAINER_VER),$(shell git rev-parse --short HEAD))
 
-CONTAINER_NAME_TAG=$(REGISTRY_REPO)/$(CONTAINER_NAME):$(CONTAINER_VER)
-CONTAINER_NAME_LATEST=$(REGISTRY_REPO)/$(CONTAINER_NAME):latest
+BACKEND_NAME=hl2022-backend
+BACKEND_NAME_TAG=$(REGISTRY_REPO)/$(BACKEND_NAME):$(CONTAINER_VER)
+BACKEND_NAME_LATEST=$(REGISTRY_REPO)/$(BACKEND_NAME):latest
 
-.PHONY: build latest push push_latest
+FRONTEND_NAME=hl2022-frontend
+FRONTEND_NAME_TAG=$(REGISTRY_REPO)/$(FRONTEND_NAME):$(CONTAINER_VER)
+FRONTEND_NAME_LATEST=$(REGISTRY_REPO)/$(FRONTEND_NAME):latest
 
-NS:=default
+#.PHONY: build latest push push_latest
 
-build:
-	docker build -t $(CONTAINER_NAME_TAG) .
+NS:=hl2022
 
-latest: build
-	docker tag $(CONTAINER_NAME_TAG) $(CONTAINER_NAME_LATEST)
+build_backend:
+	docker build -t $(BACKEND_NAME_TAG) backend/
 
-push: build
-	docker push $(CONTAINER_NAME_TAG)
+latest_backend: build_backend
+	docker tag $(BACKEND_NAME_TAG) $(BACKEND_NAME_LATEST)
 
-push_latest: push latest
-	docker push $(CONTAINER_NAME_LATEST)
+build_frontend:
+	docker build -t $(FRONTEND_NAME_TAG) frontend/
 
-kind_start:
-	kind create cluster -n hl
+latest_frontend: build_frontend
+	docker tag $(FRONTEND_NAME_TAG) $(FRONTEND_NAME_LATEST)
 
-kind_stop:
-	kind delete cluster -n hl
+build: build_backend build_frontend
+
+latest: latest_backend latest_frontend
+
+push_backend:
+	docker push $(BACKEND_NAME_TAG)
+
+push_backend_latest: push_backend latest_backend
+	docker push $(BACKEND_NAME_LATEST)
+
+push_frontend:
+	docker push $(FRONTEND_NAME_TAG)
+
+push_frontend_latest: push_frontend latest_frontend
+	docker push $(FRONTEND_NAME_LATEST)
+
+push: push_backend push_frontend
+
+latest: push_backend_latest push_frontend_latest
+
+kind_create:
+	kind create cluster -n hl2022
+
+kind_delete:
+	kind delete cluster -n hl2022
 
 deploy:
 	kubectl apply -k k8s
