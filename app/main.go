@@ -43,6 +43,7 @@ const htmlTemplate = `
        </span>
      </p>
    </p>
+   {{ if .State.History }}
    <p>
      <b>History (Last {{ .Cfg.HistorySize }})</b>
      {{ range $index, $element := .State.History }}
@@ -58,6 +59,7 @@ const htmlTemplate = `
      </p>
      {{end}}
    </p>
+   {{ end }}
   </body>
 </html>
 `
@@ -72,18 +74,19 @@ type Cfg struct {
 	PodNS       string        `env:"POD_NAMESPACE"`
 	NodeName    string        `env:"NODE_NAME"`
 	SleepDelay  time.Duration `env:"SLEEP_DELAY" env-default:"1s"`
-	HistorySize int           `env:"HISTORY_SIZE" env-default:"10"`
+	HistorySize int           `env:"HISTORY_SIZE" env-default:"20"`
+	TimeFormat  string        `env:"TIME_FORMAT" env-default:"15:04:05.999"`
 }
 
-type Elem struct {
+type HistoryItem struct {
 	TimeStamp string
 	Body      string
 	Status    int
 }
 
 type State struct {
-	Last    Elem
-	History []Elem
+	Last    HistoryItem
+	History []HistoryItem
 }
 
 type App struct {
@@ -99,8 +102,8 @@ func NewApp(cfg Cfg) *App {
 		Cfg:    cfg,
 		client: &http.Client{},
 		State: State{
-			Last:    Elem{},
-			History: make([]Elem, 0),
+			Last:    HistoryItem{},
+			History: make([]HistoryItem, 0),
 		},
 	}
 }
@@ -110,10 +113,10 @@ func (a *App) BackendHandler(w http.ResponseWriter, r *http.Request) {
 	log.Infof("Disaster annotation exists: %v", disaster)
 	if disaster {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "NODE_NAME: %s — I feel bad...\n", a.Cfg.NodeName)
+		fmt.Fprintf(w, "%s — I feel bad...\n", a.Cfg.NodeName)
 	} else {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "NODE_NAME: %s, POD_NAME: %s\n", a.Cfg.NodeName, a.Cfg.PodName)
+		fmt.Fprintf(w, "%s %s\n", a.Cfg.PodName, a.Cfg.NodeName)
 	}
 }
 
@@ -130,7 +133,7 @@ func (a *App) FrontendHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.State.Last.Status = resp.StatusCode
-	a.State.Last.TimeStamp = time.Now().Format("2006-01-02 15:04:05.999")
+	a.State.Last.TimeStamp = time.Now().Format(a.Cfg.TimeFormat) // "2006-01-02 15:04:05.999"
 	a.State.Last.Body = string(body)
 
 	w.WriteHeader(http.StatusOK)
@@ -151,7 +154,7 @@ func (a *App) FrontendHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	old := a.State.History[:lim]
-	a.State.History = append([]Elem{}, a.State.Last)
+	a.State.History = append([]HistoryItem{}, a.State.Last)
 	a.State.History = append(a.State.History, old...)
 }
 
