@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
+  name: frontend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: backend
+      app: frontend
   template:
     metadata:
       labels:
-        app: backend
+        app: frontend
     spec:
-      serviceAccountName: backend
+      serviceAccountName: frontend
       containers:
         - image: fl64/hl2022-app:latest
           imagePullPolicy: Always
@@ -34,3 +34,5 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: BACKEND_ADDR
+              value: http://backend:8000
