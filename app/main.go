@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -23,32 +24,54 @@ import (
 
 const htmlTemplate = `
 {{ $ElementFormat := "[ %s ] %s %s" }}
+{{ $backendColor := "green" }}
+{{ if ne .State.Last.Status "200 OK" }}
+{{ $backendColor = "red" }}
+{{ end }}
+
 <html>
   <head>
     {{ if .Cfg.AutoRefresh }}
     <meta http-equiv="refresh" content="{{ .Cfg.AutoInterval }}">
     {{ end }}
+    <style>
+	table, th, td {
+	  border-radius: 10px;
+	}
+	</style>
   </head>
   <body style="font-family: monospace">
    <p>
-     <b>Frontend</b>
-     <p>
-       <span style="color: black">
-         {{ printf "%s %s" .Cfg.PodName .Cfg.NodeName }}
-       </span>
-     </p>
-   </p>
-   <p>
-     <b>Backend</b>
-     <p>
-       {{ if eq .State.Last.Status "200 OK" }} 
-       <span style="color: green">
-       {{ else }}
-       <span style="color: red">
-       {{ end }}
-         {{ printf $ElementFormat .State.Last.TimeStamp .State.Last.Status .State.Last.Body }}
-       </span>
-     </p>
+
+	<table style="width: 0px; height: 0px; margin-left: auto; margin-right: auto;" border="0" cellspacing="0" cellpadding="50">
+	<tbody>
+	
+	<tr>
+	<td>&nbsp;</td>
+	<td>&nbsp;</td>
+	<td>&nbsp;</td>
+	</tr>
+	
+	<tr style="height: 50px;">
+	<td style="background-color: green; text-align: center;">
+		{{ printf "%s %s" .Cfg.PodName .Cfg.NodeName }}
+    </td>
+	<td>
+	<h1>&rarr;</h1>
+	</td>
+	<td style="background-color: {{ $backendColor }}; text-align: center;">
+      {{ printf "%s" .State.Last.Body }}
+    </td>
+	</tr>
+
+	<tr>
+	<td>&nbsp;</td>
+	<td>&nbsp;</td>
+	<td>&nbsp;</td>
+	</tr>
+
+	</tbody>
+	</table>
    </p>
    {{ if .State.History }}
    <p>
@@ -81,7 +104,7 @@ type Cfg struct {
 	PodNS        string        `env:"POD_NAMESPACE"`
 	NodeName     string        `env:"NODE_NAME"`
 	SleepDelay   time.Duration `env:"SLEEP_DELAY" env-default:"1s"`
-	HistorySize  int           `env:"HISTORY_SIZE" env-default:"20"`
+	HistorySize  int           `env:"HISTORY_SIZE" env-default:"10"`
 	TimeFormat   string        `env:"TIME_FORMAT" env-default:"15:04:05.999"`
 	AutoRefresh  bool          `env:"AUTOREFRESH_ENABLE" env-default:"true"`
 	AutoInterval int           `env:"AUTOREFRESH_INTERVAL" env-default:"1"`
@@ -125,7 +148,7 @@ func (a *App) BackendHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%s — I feel bad...\n", a.Cfg.NodeName)
 	} else {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "%s %s\n", a.Cfg.PodName, a.Cfg.NodeName)
+		fmt.Fprintf(w, "%s\n%s\n", a.Cfg.PodName, a.Cfg.NodeName)
 	}
 }
 
@@ -283,6 +306,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("Can't load env")
 	}
+
+	// dev1-worker-38495ce3-d9598-8w7wh -> dev1
+	var re = regexp.MustCompile(`(?P<cluster>.+?)-.*`)
+	matches := re.FindStringSubmatch(cfg.NodeName)
+	if len(matches) == 2 {
+		cfg.NodeName = matches[1]
+	}
+
 	a := NewApp(cfg)
 
 	sigChan := make(chan os.Signal, 1)
