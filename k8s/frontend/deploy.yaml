@@ -41,4 +41,4 @@ spec:
             - name: AUTOREFRESH_INTERVAL
               value: "3"
             - name: HISTORY_SIZE
-              value: "10"
+              value: "5"
