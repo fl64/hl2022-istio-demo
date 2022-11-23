@@ -25,6 +25,9 @@ const htmlTemplate = `
 {{ $ElementFormat := "[ %s ] %d %s" }}
 <html>
   <head>
+    {{ if .Cfg.AutoRefresh }}
+    <meta http-equiv="refresh" content="{{ .Cfg.AutoInterval }}">
+    {{ end }}
   </head>
   <body style="font-family: monospace">
    <p>
@@ -72,14 +75,16 @@ var BuildDatetime = "none"
 var BuildVer = "devel"
 
 type Cfg struct {
-	SrvAddr     string        `env:"SERVER_ADDR" env-default:":8000"`
-	BackendAddr string        `env:"BACKEND_ADDR"`
-	PodName     string        `env:"POD_NAME"`
-	PodNS       string        `env:"POD_NAMESPACE"`
-	NodeName    string        `env:"NODE_NAME"`
-	SleepDelay  time.Duration `env:"SLEEP_DELAY" env-default:"1s"`
-	HistorySize int           `env:"HISTORY_SIZE" env-default:"20"`
-	TimeFormat  string        `env:"TIME_FORMAT" env-default:"15:04:05.999"`
+	SrvAddr      string        `env:"SERVER_ADDR" env-default:":8000"`
+	BackendAddr  string        `env:"BACKEND_ADDR"`
+	PodName      string        `env:"POD_NAME"`
+	PodNS        string        `env:"POD_NAMESPACE"`
+	NodeName     string        `env:"NODE_NAME"`
+	SleepDelay   time.Duration `env:"SLEEP_DELAY" env-default:"1s"`
+	HistorySize  int           `env:"HISTORY_SIZE" env-default:"20"`
+	TimeFormat   string        `env:"TIME_FORMAT" env-default:"15:04:05.999"`
+	AutoRefresh  bool          `env:"AUTOREFRESH_ENABLE" env-default:"true"`
+	AutoInterval int           `env:"AUTOREFRESH_INTERVAL" env-default:"1"`
 }
 
 type HistoryItem struct {
