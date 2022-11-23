@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/ilyakaznacheev/cleanenv"
@@ -22,80 +23,11 @@ import (
 	"time"
 )
 
-const htmlTemplate = `
-{{ $ElementFormat := "[ %s ] %s %s" }}
-{{ $backendColor := "green" }}
-{{ if ne .State.Last.Status "200 OK" }}
-{{ $backendColor = "red" }}
-{{ end }}
-
-<html>
-  <head>
-    {{ if .Cfg.AutoRefresh }}
-    <meta http-equiv="refresh" content="{{ .Cfg.AutoInterval }}">
-    {{ end }}
-    <style>
-	table, th, td {
-	  border-radius: 10px;
-	}
-	</style>
-  </head>
-  <body style="font-family: monospace">
-   <p>
-
-	<table style="width: 0px; height: 0px; margin-left: auto; margin-right: auto;" border="0" cellspacing="0" cellpadding="50">
-	<tbody>
-	
-	<tr>
-	<td>&nbsp;</td>
-	<td>&nbsp;</td>
-	<td>&nbsp;</td>
-	</tr>
-	
-	<tr style="height: 50px;">
-	<td style="background-color: green; text-align: center;">
-		{{ printf "%s %s" .Cfg.PodName .Cfg.NodeName }}
-    </td>
-	<td>
-	<h1>&rarr;</h1>
-	</td>
-	<td style="background-color: {{ $backendColor }}; text-align: center;">
-      {{ printf "%s" .State.Last.Body }}
-    </td>
-	</tr>
-
-	<tr>
-	<td>&nbsp;</td>
-	<td>&nbsp;</td>
-	<td>&nbsp;</td>
-	</tr>
-
-	</tbody>
-	</table>
-   </p>
-   {{ if .State.History }}
-   <p>
-     <b>History (Last {{ .Cfg.HistorySize }})</b>
-     {{ range $index, $element := .State.History }}
-     {{ if ge $index $.Cfg.HistorySize }} {{ break }} {{ end }} 
-     <p>
-       {{ if eq $element.Status "200 OK" }} 
-       <span style="color: green">
-       {{ else }}
-       <span style="color: red">
-       {{ end }}
-         {{ printf $ElementFormat $element.TimeStamp $element.Status $element.Body }}
-       </span>
-     </p>
-     {{end}}
-   </p>
-   {{ end }}
-  </body>
-</html>
-`
-
 var BuildDatetime = "none"
 var BuildVer = "devel"
+
+//go:embed "frontend.tmpl"
+var htmlTemplate string
 
 type Cfg struct {
 	SrvAddr      string        `env:"SERVER_ADDR" env-default:":8000"`
@@ -105,8 +37,8 @@ type Cfg struct {
 	NodeName     string        `env:"NODE_NAME"`
 	SleepDelay   time.Duration `env:"SLEEP_DELAY" env-default:"1s"`
 	HistorySize  int           `env:"HISTORY_SIZE" env-default:"10"`
-	TimeFormat   string        `env:"TIME_FORMAT" env-default:"15:04:05.999"`
-	AutoRefresh  bool          `env:"AUTOREFRESH_ENABLE" env-default:"true"`
+	TimeFormat   string        `env:"TIME_FORMAT" env-default:"15:04:05"`
+	AutoRefresh  bool          `env:"AUTOREFRESH_ENABLE" env-default:"false"`
 	AutoInterval int           `env:"AUTOREFRESH_INTERVAL" env-default:"1"`
 }
 
@@ -130,9 +62,12 @@ type App struct {
 }
 
 func NewApp(cfg Cfg) *App {
+	tr := &http.Transport{
+		DisableKeepAlives: true,
+	}
 	return &App{
 		Cfg:    cfg,
-		client: &http.Client{},
+		client: &http.Client{Transport: tr},
 		State: State{
 			Last:    HistoryItem{},
 			History: make([]HistoryItem, 0),
@@ -145,10 +80,10 @@ func (a *App) BackendHandler(w http.ResponseWriter, r *http.Request) {
 	log.Infof("Disaster annotation exists: %v", disaster)
 	if disaster {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "%s — I feel bad...\n", a.Cfg.NodeName)
+		fmt.Fprintf(w, "%s — %s", a.Cfg.NodeName, a.Cfg.PodName)
 	} else {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "%s\n%s\n", a.Cfg.PodName, a.Cfg.NodeName)
+		fmt.Fprintf(w, "%s — %s", a.Cfg.NodeName, a.Cfg.PodName)
 	}
 }
 

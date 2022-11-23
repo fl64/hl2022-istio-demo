@@ -1,0 +1,219 @@
+<!-- {{ $ElementFormat := "[ %s ] %s %s" }} -->
+<html>
+<head>
+    <!-- {{ if .Cfg.AutoRefresh }} -->
+    <meta http-equiv="refresh" content="{{ .Cfg.AutoInterval }}">
+    <!-- {{ end }} -->
+    <style>
+        body{
+            font-family: monospace;
+            margin: 0;
+            padding: 0;
+        }
+
+        .main{
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .top {
+            max-height: 50px;
+            border: 1px solid red;
+            background: lightsteelblue;
+        }
+
+        .main .status {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            min-height: 200px;
+            max-height: 45vh;
+
+            background: white;
+            padding-top: 2vh;
+            padding-bottom: 2vh;
+            padding-left: 2vw;
+            padding-right: 2vw;
+        }
+
+        .main .status .left {
+            margin:auto;
+        }
+        .main .status .right {
+            margin:auto;
+        }
+
+        .main .status .arrow {
+            flex: 0;
+            /* border: 1px solid blue; */
+            min-width: 7vw;
+            align-items: center;
+            text-align: center;
+            margin:auto;
+        }
+
+        .history {
+            display: flex;
+            flex-direction: column;
+            flex: 1;                  /* new */
+            background: #fdf6e3;
+            border-top: 2px solid #eee8d5;
+            padding: 5px;
+        }
+
+        .history h1 {
+            font-family: sans-serif;
+            margin-right: 10px;
+            font-size: 2vw;
+            border-bottom: 1px solid #eee8d5;
+        }
+
+        .ok div.cluster {
+            border: 1px solid #38761D;
+            background: #93C47D;
+        }
+
+        .ok div.pod {
+            border: 1px solid #38761D;
+            background: #B6D7A8;
+        }
+
+        .fail div.cluster {
+            border: 1px solid #38761D;
+            background: #E06666;
+        }
+
+        .fail div.pod {
+            border: 1px solid #990000;
+            background: #EA9999;
+        }
+
+
+        div.cluster {
+            min-width: 35vw;
+
+            border-bottom: 0 !important;
+            padding: 3px;
+            font-family: sans-serif;
+            text-align: center;
+            font-size: 2vw;
+
+            border-top-left-radius: 1vw;
+            border-top-right-radius: 1vw;
+        }
+
+        div.pod {
+            min-width: 35vw;
+            max-width: 35vw;
+            flex-grow: 1;
+
+            display: flex;
+
+            align-items: center;
+
+            padding: 3px;
+            font-size: 1.5vw;
+
+            overflow: hidden;
+            border-bottom-left-radius: 1vw;
+            border-bottom-right-radius: 1vw;
+
+        }
+
+        div.pod span{
+            padding: 5px;
+            margin: auto;
+            text-align: center;
+            text-overflow: clip;
+        }
+
+        /* Quadratich praktich "hack" */
+
+        .flex-cell {
+            max-height: 50vh;
+            flex: 0 0 20%;
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            padding: 0.5rem;
+            box-sizing: border-box;
+        }
+
+        .flex-cell:before {
+            content: '';
+            display: table;
+            padding-top: 100%;
+        }
+
+        .flex-item {
+            flex-grow: 1;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="main">
+    <div class="top" style="display: none">
+demo hl
+    </div>
+    <div class="status">
+        <div class="left ok flex-cell">
+           <div class="flex-item">
+             <div class="cluster title">Frontend</div>
+             <div class="pod"><span>
+             {{ .Cfg.NodeName }} — {{ .Cfg.PodName }}
+             </span></div>
+           </div>
+        </div>
+        <div class="arrow">
+            <svg width="10vw" height="10vw" viewbox="0 0 35864 35364">
+                <g transform="translate(400 5500)">
+                    <path fill="#eeeeee" stroke="#595959" stroke-width="400" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" pointer-events="visiblePainted" d="M 0 6315 L 22734.000000000004 6315 22734.000000000004 0 35364 12630 22734.000000000004 25260 22734.000000000004 18945 0 18945 Z"></path>
+                </g>
+            </svg>
+        </div>
+
+        <!-- {{ $class := "ok" }} -->
+        <!-- {{ if ne .State.Last.Status "200 OK" }} -->
+        <!-- {{   $class = "fail" }} -->
+        <!-- {{ end }} -->
+        <div class="right {{ $class }} flex-cell">
+            <div class="flex-item">
+                <div class="cluster title">Backend</div>
+                <div class="pod">
+                    <span>{{ .State.Last.Body }}</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div class="history">
+        <!-- {{ if .State.History }} -->
+        <h1>History (Last {{ .Cfg.HistorySize }})</h1>
+        <!--  {{ range $index, $element := .State.History }} -->
+        <!--  {{ if ge $index $.Cfg.HistorySize }} {{ break }} {{ end }} -->
+
+        <!-- {{ $class := "ok" }} -->
+        <!-- {{ if ne $element.Status "200 OK" }} -->
+        <!-- {{   $class = "fail" }} -->
+        <!-- {{ end }} -->
+        <p class="{{ $class }}">
+         {{ printf $ElementFormat $element.TimeStamp $element.Status $element.Body }}
+        </p>
+
+        <!-- {{end}} range -->
+        <!-- {{end}} if -->
+
+    </div>
+
+</div>
+
+</body>
+</html>

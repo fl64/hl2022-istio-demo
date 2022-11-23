@@ -38,7 +38,7 @@ check:
 	kubectl wait pod -n ${NS} --for=condition=ready --timeout=30s -l app=frontend
 
 undeploy:
-	kubectl delete -k k8s/
+	kubectl delete -k k8s/ --force --grace-period 0
 
 annotation_add:
 	kubectl -n ${NS} annotate pod -l app=backend disaster=""
