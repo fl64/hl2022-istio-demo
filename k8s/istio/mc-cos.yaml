@@ -1,0 +1,7 @@
+---
+apiVersion: deckhouse.io/v1alpha1
+kind: IstioMulticluster
+metadata:
+  name: cos
+spec:
+  metadataEndpoint: https://istio.geo-cos.hl2022.hf.flant.com/metadata/
