@@ -4,7 +4,7 @@ kind: Kustomization
 
 replicas:
   - name: backend
-    count: 2
+    count: 1
 
 resources:
   - deploy.yaml
