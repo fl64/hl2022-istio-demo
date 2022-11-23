@@ -243,7 +243,7 @@ func main() {
 	}
 
 	// dev1-worker-38495ce3-d9598-8w7wh -> dev1
-	var re = regexp.MustCompile(`(?P<cluster>.+?)-.*`)
+	var re = regexp.MustCompile(`(?P<cluster>.+?-.+?)-.*`)
 	matches := re.FindStringSubmatch(cfg.NodeName)
 	if len(matches) == 2 {
 		cfg.NodeName = matches[1]
