@@ -1,0 +1,16 @@
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: backend
+  namespace: hl2022
+spec:
+  host: backend
+  trafficPolicy:
+    loadBalancer:
+      localityLbSetting:
+        enabled: true
+    outlierDetection:
+      consecutive5xxErrors: 1
+      interval: 1s
+      baseEjectionTime: 1m

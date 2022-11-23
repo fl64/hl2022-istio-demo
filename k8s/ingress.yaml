@@ -2,11 +2,29 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: frontend
+  name: frontend-sin
 spec:
   ingressClassName: nginx
   rules:
-    - host: frontend.dev1.p-tishkov.hf.flant.com
+    - host: demo.geo-sin.hl2022.hf.flant.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: frontend
+                port:
+                  number: 8000
+            path: /
+            pathType: ImplementationSpecific
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-cos
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: demo.geo-cos.hl2022.hf.flant.com
       http:
         paths:
           - backend:
