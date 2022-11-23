@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -28,7 +29,9 @@ const htmlTemplate = `
    <p>
      <b>Frontend</b>
      <p>
-       <span style="color: black">{{ .Cfg.PodName }} {{ .Cfg.NodeName }}</span>
+       <span style="color: black">
+         {{ printf "%s %s" .Cfg.PodName .Cfg.NodeName }}
+       </span>
      </p>
    </p>
    <p>
@@ -39,7 +42,7 @@ const htmlTemplate = `
        {{ else }}
        <span style="color: red">
        {{ end }}
-         [ {{ .State.Last.TimeStamp }} ] {{ .State.Last.Status }} {{ .State.Last.Body }}
+         {{ printf "[ %s ] '%d' '%s'" .State.Last.TimeStamp .State.Last.Status .State.Last.Body }}
        </span>
      </p>
    </p>
@@ -54,7 +57,7 @@ const htmlTemplate = `
        {{ else }}
        <span style="color: red">
        {{ end }}
-         [ {{ $element.TimeStamp }} ] {{ $element.Status }} {{ $element.Body }}
+         {{ printf "[ %s ] '%d' '%s'" $element.TimeStamp $element.Status $element.Body }}
        </span>
      </p>
      {{end}}
@@ -121,9 +124,26 @@ func (a *App) BackendHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) FrontendHandler(w http.ResponseWriter, r *http.Request) {
-	resp, err := a.client.Get(a.Cfg.BackendAddr)
+	url := fmt.Sprintf("%s/%s", a.Cfg.BackendAddr, r.URL)
+	req, err := http.NewRequest("GET", url, r.Body)
 	if err != nil {
-		log.Errorf("Can't get response from backend", err)
+		log.Errorf("Can't create newrequest", err)
+		return
+	}
+
+	// Add all X- headers to request
+	for name, values := range r.Header {
+		// Loop over all values for the name.
+		for _, value := range values {
+			if strings.HasPrefix(name, "X-") {
+				req.Header.Set(name, value)
+			}
+		}
+	}
+
+	resp, err := a.client.Do(req)
+	if err != nil {
+		log.Errorf("Can't do request", err)
 	}
 
 	defer resp.Body.Close()
@@ -132,6 +152,7 @@ func (a *App) FrontendHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatalln(err)
 	}
 
+	log.Infof("Got response form backend '%s' with status '%s'", a.Cfg.BackendAddr, resp.Status)
 	a.State.Last.Status = resp.StatusCode
 	a.State.Last.TimeStamp = time.Now().Format(a.Cfg.TimeFormat) // "2006-01-02 15:04:05.999"
 	a.State.Last.Body = string(body)
@@ -220,9 +241,9 @@ func (a *App) Run(ctx context.Context) error {
 	r := mux.NewRouter()
 	r.Use(a.Logging)
 	if a.Cfg.BackendAddr == "" {
-		r.HandleFunc("/", a.BackendHandler)
+		r.PathPrefix("/").HandlerFunc(a.BackendHandler)
 	} else {
-		r.HandleFunc("/", a.FrontendHandler)
+		r.PathPrefix("/").HandlerFunc(a.FrontendHandler)
 	}
 
 	a.srv = &http.Server{
