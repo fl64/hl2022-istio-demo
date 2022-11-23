@@ -22,7 +22,7 @@ import (
 )
 
 const htmlTemplate = `
-{{ $ElementFormat := "[ %s ] %d %s" }}
+{{ $ElementFormat := "[ %s ] %s %s" }}
 <html>
   <head>
     {{ if .Cfg.AutoRefresh }}
@@ -41,7 +41,7 @@ const htmlTemplate = `
    <p>
      <b>Backend</b>
      <p>
-       {{ if eq .State.Last.Status 200 }} 
+       {{ if eq .State.Last.Status "200 OK" }} 
        <span style="color: green">
        {{ else }}
        <span style="color: red">
@@ -56,7 +56,7 @@ const htmlTemplate = `
      {{ range $index, $element := .State.History }}
      {{ if ge $index $.Cfg.HistorySize }} {{ break }} {{ end }} 
      <p>
-       {{ if eq $element.Status 200 }} 
+       {{ if eq $element.Status "200 OK" }} 
        <span style="color: green">
        {{ else }}
        <span style="color: red">
@@ -90,7 +90,7 @@ type Cfg struct {
 type HistoryItem struct {
 	TimeStamp string
 	Body      string
-	Status    int
+	Status    string
 }
 
 type State struct {
@@ -159,7 +159,7 @@ func (a *App) FrontendHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Infof("Got response form backend '%s' with status '%s'", a.Cfg.BackendAddr, resp.Status)
-	a.State.Last.Status = resp.StatusCode
+	a.State.Last.Status = resp.Status
 	a.State.Last.TimeStamp = time.Now().Format(a.Cfg.TimeFormat) // "2006-01-02 15:04:05.999"
 	a.State.Last.Body = string(body)
 
