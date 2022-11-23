@@ -36,3 +36,9 @@ spec:
                   fieldPath: spec.nodeName
             - name: BACKEND_ADDR
               value: http://backend:8000
+            - name: AUTOREFRESH_ENABLE
+              value: "false"
+            - name: AUTOREFRESH_INTERVAL
+              value: "3"
+            - name: HISTORY_SIZE
+              value: "10"
