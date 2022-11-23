@@ -7,7 +7,7 @@ IMAGE_NAME=hl2022-app
 IMAGE_NAME_TAG=$(REGISTRY_REPO)/$(IMAGE_NAME):$(IMAGE_VER)
 IMAGE_NAME_LATEST=$(REGISTRY_REPO)/$(IMAGE_NAME):latest
 
-#.PHONY: build latest push push_latest
+.PHONY: build latest push push_latest kind_create kind_delete check deploy undeploy annotation_add annotation_remove
 
 NS:=hl2022
 
@@ -40,8 +40,8 @@ check:
 undeploy:
 	kubectl delete -k k8s/
 
-annotate:
+annotation_add:
 	kubectl -n ${NS} annotate pod -l app=backend disaster=""
 
-remove_annotation:
+annotation_remove:
 	kubectl -n ${NS} annotate pod -l app=backend disaster-

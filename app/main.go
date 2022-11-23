@@ -22,6 +22,7 @@ import (
 )
 
 const htmlTemplate = `
+{{ $ElementFormat := "[ %s ] %d %s" }}
 <html>
   <head>
   </head>
@@ -42,7 +43,7 @@ const htmlTemplate = `
        {{ else }}
        <span style="color: red">
        {{ end }}
-         {{ printf "[ %s ] '%d' '%s'" .State.Last.TimeStamp .State.Last.Status .State.Last.Body }}
+         {{ printf $ElementFormat .State.Last.TimeStamp .State.Last.Status .State.Last.Body }}
        </span>
      </p>
    </p>
@@ -57,7 +58,7 @@ const htmlTemplate = `
        {{ else }}
        <span style="color: red">
        {{ end }}
-         {{ printf "[ %s ] '%d' '%s'" $element.TimeStamp $element.Status $element.Body }}
+         {{ printf $ElementFormat $element.TimeStamp $element.Status $element.Body }}
        </span>
      </p>
      {{end}}
